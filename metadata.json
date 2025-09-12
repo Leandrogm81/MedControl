@@ -1,0 +1,5 @@
+{
+  "name": "Controle de Medicação",
+  "description": "Um aplicativo para ajudar os usuários a gerenciar e lembrar de tomar seus medicamentos de forma correta e pontual, mantendo um histórico preciso.",
+  "requestFramePermissions": []
+}
