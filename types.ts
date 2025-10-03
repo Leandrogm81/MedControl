@@ -35,3 +35,17 @@ export interface HistoryEntry {
   takenAt: number; // timestamp
   scheduledTime: string; // "HH:mm" or "Livre" for AS_NEEDED
 }
+
+export interface UserProfile {
+  name: string;
+  email: string;
+  picture: string;
+}
+
+export interface GapiTokenResponse {
+  access_token: string;
+  expires_in: number;
+  scope: string;
+  token_type: string;
+  // and other fields...
+}
