@@ -11,9 +11,9 @@ declare global {
 }
 
 // You must create a project in Google Cloud Console and get a Client ID.
-// Make sure to add `http://localhost:3000` (or your dev origin) to "Authorized JavaScript origins"
-// and `http://localhost:3000` to "Authorized redirect URIs".
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com';
+// Make sure to add your development and production origins to "Authorized JavaScript origins".
+// e.g., http://localhost:3000, https://your-app-domain.com
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID; 
 
 const SCOPES = 'openid profile email https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file';
 
@@ -24,6 +24,13 @@ interface GoogleAuthProps {
 
 const GoogleAuth: React.FC<GoogleAuthProps> = ({ onAuthChange, profile }) => {
     const [tokenClient, setTokenClient] = useState<any>(null);
+    const [isConfigured, setIsConfigured] = useState(false);
+
+    useEffect(() => {
+        if (GOOGLE_CLIENT_ID && GOOGLE_CLIENT_ID !== 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com') {
+            setIsConfigured(true);
+        }
+    }, []);
 
     const fetchProfile = useCallback(async (token: string) => {
         try {
@@ -40,15 +47,17 @@ const GoogleAuth: React.FC<GoogleAuthProps> = ({ onAuthChange, profile }) => {
     }, []);
 
     useEffect(() => {
+        if (!isConfigured) return;
+
         const initializeGsi = () => {
             if (window.google?.accounts?.oauth2) {
                 const client = window.google.accounts.oauth2.initTokenClient({
                     client_id: GOOGLE_CLIENT_ID,
                     scope: SCOPES,
-                    // Fix: The token response from Google can include an 'error' property, so we use 'any' to avoid type errors.
                     callback: async (tokenResponse: any) => {
                         if (tokenResponse.error) {
-                            console.error('Google Auth Error:', tokenResponse.error);
+                            console.error('Google Auth Error:', tokenResponse);
+                            alert(`Erro de autenticação do Google: ${tokenResponse.error_description || tokenResponse.error}. Verifique a configuração do Client ID e as origens autorizadas no Google Cloud Console.`);
                             return;
                         }
                         const userProfile = await fetchProfile(tokenResponse.access_token);
@@ -62,12 +71,11 @@ const GoogleAuth: React.FC<GoogleAuthProps> = ({ onAuthChange, profile }) => {
         if (window.google) {
             initializeGsi();
         } else {
-            // If GSI script hasn't loaded yet, wait for it.
             const script = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
             script?.addEventListener('load', initializeGsi);
         }
 
-    }, [fetchProfile, onAuthChange]);
+    }, [isConfigured, fetchProfile, onAuthChange]);
 
     const handleLogin = () => {
         if (tokenClient) {
@@ -77,13 +85,17 @@ const GoogleAuth: React.FC<GoogleAuthProps> = ({ onAuthChange, profile }) => {
 
     const handleLogout = () => {
         onAuthChange(null, null);
-        if (window.google?.accounts?.oauth2) {
-            // No direct 'logout' for token client, just revoke token.
-            // For simplicity, we just clear the state locally.
-            // A full implementation might call `google.accounts.oauth2.revoke`.
-        }
     };
 
+    if (!isConfigured) {
+        return (
+            <div className="text-xs text-center text-red-700 bg-red-100 p-2 rounded-md border border-red-200">
+                A aplicação não está configurada.<br />
+                Adicione a sua `GOOGLE_CLIENT_ID`.
+            </div>
+        );
+    }
+    
     if (profile) {
         return (
             <div className="flex items-center gap-3">
@@ -100,7 +112,7 @@ const GoogleAuth: React.FC<GoogleAuthProps> = ({ onAuthChange, profile }) => {
         <button
             onClick={handleLogin}
             disabled={!tokenClient}
-            className="flex items-center gap-2 bg-white border border-slate-300 text-slate-700 font-semibold py-2 px-4 rounded-full hover:bg-slate-100 transition-colors shadow-sm disabled:opacity-50"
+            className="flex items-center gap-2 bg-white border border-slate-300 text-slate-700 font-semibold py-2 px-4 rounded-full hover:bg-slate-100 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-wait"
         >
             <GoogleIcon className="w-5 h-5" />
             Login com Google
